@@ -1,5 +1,5 @@
 #
-# VOC 나 Open Image dataset 으로 SSD 모델을 학습시킬 수 있는 파이썬 코드
+# Open Image dataset 으로 SSD 모델을 학습시킬 수 있는 파이썬 코드
 #
 
 #1. 시스템, 데이터로더, 스케줄러, 토치 필요한 패키지들 임포트
