@@ -1,6 +1,8 @@
 #
-# train an SSD model on Pascal VOC or Open Images datasets
+# VOC 나 Open Image dataset 으로 SSD 모델을 학습시킬 수 있는 파이썬 코드
 #
+
+#1. 시스템, 데이터로더, 스케줄러, 토치 필요한 패키지들 임포트
 import os
 import sys
 import logging
@@ -11,6 +13,7 @@ import torch
 from torch.utils.data import DataLoader, ConcatDataset
 from torch.optim.lr_scheduler import CosineAnnealingLR, MultiStepLR
 
+#2. 하위 디렉토리 vision에 있는 ssd, dataset, config 등의 패키지 임포트
 from vision.utils.misc import str2bool, Timer, freeze_net_layers, store_labels
 from vision.ssd.ssd import MatchPrior
 from vision.ssd.vgg_ssd import create_vgg_ssd
@@ -26,17 +29,18 @@ from vision.ssd.config import mobilenetv1_ssd_config
 from vision.ssd.config import squeezenet_ssd_config
 from vision.ssd.data_preprocessing import TrainAugmentation, TestTransform
 
+#3. 실행 인자 파서로 데이터셋, 네트워크, 미리 훈련된 모델, SGD 등의 변수 세팅
 parser = argparse.ArgumentParser(
     description='Single Shot MultiBox Detector Training With PyTorch')
 
-# Params for datasets
+# 데이터셋 인자
 parser.add_argument("--dataset-type", default="open_images", type=str,
                     help='Specify dataset type. Currently supports voc and open_images.')
 parser.add_argument('--datasets', '--data', nargs='+', default=["data"], help='Dataset directory path')
 parser.add_argument('--balance-data', action='store_true',
                     help="Balance training data by down-sampling more frequent labels.")
 
-# Params for network
+# 네트워크 인자
 parser.add_argument('--net', default="mb1-ssd",
                     help="The network architecture, it can be mb1-ssd, mb1-lite-ssd, mb2-ssd-lite or vgg16-ssd.")
 parser.add_argument('--freeze-base-net', action='store_true',
@@ -46,13 +50,13 @@ parser.add_argument('--freeze-net', action='store_true',
 parser.add_argument('--mb2-width-mult', default=1.0, type=float,
                     help='Width Multiplifier for MobilenetV2')
 
-# Params for loading pretrained basenet or checkpoints.
+# 미리 훈련된 모델 인자.
 parser.add_argument('--base-net', help='Pretrained base model')
 parser.add_argument('--pretrained-ssd', default='models/mobilenet-v1-ssd-mp-0_675.pth', type=str, help='Pre-trained base model')
 parser.add_argument('--resume', default=None, type=str,
                     help='Checkpoint state_dict file to resume training from')
 
-# Params for SGD
+# SGD 인자
 parser.add_argument('--lr', '--learning-rate', default=0.01, type=float,
                     help='initial learning rate')
 parser.add_argument('--momentum', default=0.9, type=float,
@@ -61,24 +65,9 @@ parser.add_argument('--weight-decay', default=5e-4, type=float,
                     help='Weight decay for SGD')
 parser.add_argument('--gamma', default=0.1, type=float,
                     help='Gamma update for SGD')
-parser.add_argument('--base-net-lr', default=0.001, type=float,
-                    help='initial learning rate for base net, or None to use --lr')
-parser.add_argument('--extra-layers-lr', default=None, type=float,
-                    help='initial learning rate for the layers not in base net and prediction heads.')
 
-# Scheduler
-parser.add_argument('--scheduler', default="cosine", type=str,
-                    help="Scheduler for SGD. It can one of multi-step and cosine")
 
-# Params for Multi-step Scheduler
-parser.add_argument('--milestones', default="80,100", type=str,
-                    help="milestones for MultiStepLR")
-
-# Params for Cosine Annealing
-parser.add_argument('--t-max', default=100, type=float,
-                    help='T_max value for Cosine Annealing Scheduler.')
-
-# Train params
+# 학습에 관련된 배치 사이즈, 에포크 수 등의 인자
 parser.add_argument('--batch-size', default=4, type=int,
                     help='Batch size for training')
 parser.add_argument('--num-epochs', '--epochs', default=30, type=int,
@@ -96,7 +85,8 @@ parser.add_argument('--checkpoint-folder', '--model-dir', default='models/',
 
 logging.basicConfig(stream=sys.stdout, level=logging.INFO,
                     format='%(asctime)s - %(message)s', datefmt="%Y-%m-%d %H:%M:%S")
-                    
+    
+#4. 인자 변수, 쿠다 사용 처리    
 args = parser.parse_args()
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() and args.use_cuda else "cpu")
 
@@ -104,7 +94,7 @@ if args.use_cuda and torch.cuda.is_available():
     torch.backends.cudnn.benchmark = True
     logging.info("Using CUDA...")
 
-
+#5. 훈련 함수
 def train(loader, net, criterion, optimizer, device, debug_steps=100, epoch=-1):
     net.train(True)
     running_loss = 0.0
@@ -117,8 +107,10 @@ def train(loader, net, criterion, optimizer, device, debug_steps=100, epoch=-1):
         labels = labels.to(device)
 
         optimizer.zero_grad()
+        # 훈련 데이터 네트워크 모델 계산
         confidence, locations = net(images)
-        regression_loss, classification_loss = criterion(confidence, locations, labels, boxes)  # TODO CHANGE BOXES
+        # 훈련 데이터 손실값 계산, 역전파, 최적화
+        regression_loss, classification_loss = criterion(confidence, locations, labels, boxes) 
         loss = regression_loss + classification_loss
         loss.backward()
         optimizer.step()
@@ -130,17 +122,17 @@ def train(loader, net, criterion, optimizer, device, debug_steps=100, epoch=-1):
             avg_loss = running_loss / debug_steps
             avg_reg_loss = running_regression_loss / debug_steps
             avg_clf_loss = running_classification_loss / debug_steps
-            logging.info(
-                f"Epoch: {epoch}, Step: {i}/{len(loader)}, " +
-                f"Avg Loss: {avg_loss:.4f}, " +
-                f"Avg Regression Loss {avg_reg_loss:.4f}, " +
-                f"Avg Classification Loss: {avg_clf_loss:.4f}"
-            )
             running_loss = 0.0
             running_regression_loss = 0.0
             running_classification_loss = 0.0
+    logging.info(
+        f"TRIAIN Epoch: {epoch},  " +
+        f"Avg Loss: {avg_loss:.4f}, " +
+        f"Avg Regression Loss {avg_reg_loss:.4f}, " +
+        f"Avg Classification Loss: {avg_clf_loss:.4f}"
+    )
 
-
+#6. 테스트 함수    
 def test(loader, net, criterion, device):
     net.eval()
     running_loss = 0.0
@@ -155,7 +147,9 @@ def test(loader, net, criterion, device):
         num += 1
 
         with torch.no_grad():
+            # 테스트 데이터 네트워크 모델 계산
             confidence, locations = net(images)
+            # 테스트 데이터 손실값 계산
             regression_loss, classification_loss = criterion(confidence, locations, labels, boxes)
             loss = regression_loss + classification_loss
 
@@ -164,20 +158,20 @@ def test(loader, net, criterion, device):
         running_classification_loss += classification_loss.item()
     return running_loss / num, running_regression_loss / num, running_classification_loss / num
 
-
+#7. 메인 함수 시작    
 if __name__ == '__main__':
     timer = Timer()
 
     logging.info(args)
     
-    # make sure that the checkpoint output dir exists
+    # 8. 체크포인트 폴더 (모델 폴더) 확인
     if args.checkpoint_folder:
         args.checkpoint_folder = os.path.expanduser(args.checkpoint_folder)
 
         if not os.path.exists(args.checkpoint_folder):
             os.mkdir(args.checkpoint_folder)
             
-    # select the network architecture and config     
+    # 9. 네트워크 지정     
     if args.net == 'vgg16-ssd':
         create_net = create_vgg_ssd
         config = vgg_ssd_config
@@ -198,37 +192,27 @@ if __name__ == '__main__':
         parser.print_help(sys.stderr)
         sys.exit(1)
         
-    # create data transforms for train/test/val
+    # 10. 훈련 데이터, 테스트 데이터 전처리 준비
     train_transform = TrainAugmentation(config.image_size, config.image_mean, config.image_std)
     target_transform = MatchPrior(config.priors, config.center_variance,
                                   config.size_variance, 0.5)
 
     test_transform = TestTransform(config.image_size, config.image_mean, config.image_std)
 
-    # load datasets (could be multiple)
+    # 11. 데이터셋 로딩 
     logging.info("Prepare training datasets.")
     datasets = []
     for dataset_path in args.datasets:
-        if args.dataset_type == 'voc':
-            dataset = VOCDataset(dataset_path, transform=train_transform,
-                                 target_transform=target_transform)
-            label_file = os.path.join(args.checkpoint_folder, "labels.txt")
-            store_labels(label_file, dataset.class_names)
-            num_classes = len(dataset.class_names)
-        elif args.dataset_type == 'open_images':
-            dataset = OpenImagesDataset(dataset_path,
-                 transform=train_transform, target_transform=target_transform,
-                 dataset_type="train", balance_data=args.balance_data)
-            label_file = os.path.join(args.checkpoint_folder, "labels.txt")
-            store_labels(label_file, dataset.class_names)
-            logging.info(dataset)
-            num_classes = len(dataset.class_names)
-
-        else:
-            raise ValueError(f"Dataset type {args.dataset_type} is not supported.")
+        dataset = OpenImagesDataset(dataset_path,
+              transform=train_transform, target_transform=target_transform,
+              dataset_type="train", balance_data=args.balance_data)
+        label_file = os.path.join(args.checkpoint_folder, "labels.txt")
+        store_labels(label_file, dataset.class_names)
+        logging.info(dataset)
+        num_classes = len(dataset.class_names)
         datasets.append(dataset)
         
-    # create training dataset
+    # 12. 훈련 데이터셋 만들기
     logging.info(f"Stored labels into file {label_file}.")
     train_dataset = ConcatDataset(datasets)
     logging.info("Train dataset size: {}".format(len(train_dataset)))
@@ -236,7 +220,7 @@ if __name__ == '__main__':
                               num_workers=args.num_workers,
                               shuffle=True)
                            
-    # create validation dataset                           
+    # 13. 검증 데이터셋 만들기                 
     logging.info("Prepare Validation datasets.")
     if args.dataset_type == "voc":
         val_dataset = VOCDataset(dataset_path, transform=test_transform,
@@ -252,51 +236,14 @@ if __name__ == '__main__':
                             num_workers=args.num_workers,
                             shuffle=False)
                             
-    # create the network
+    # 14. 네트워크 객체 생성
     logging.info("Build network.")
     net = create_net(num_classes)
     min_loss = -10000.0
     last_epoch = -1
-
-    # freeze certain layers (if requested)
-    base_net_lr = args.base_net_lr if args.base_net_lr is not None else args.lr
-    extra_layers_lr = args.extra_layers_lr if args.extra_layers_lr is not None else args.lr
     
-    if args.freeze_base_net:
-        logging.info("Freeze base net.")
-        freeze_net_layers(net.base_net)
-        params = itertools.chain(net.source_layer_add_ons.parameters(), net.extras.parameters(),
-                                 net.regression_headers.parameters(), net.classification_headers.parameters())
-        params = [
-            {'params': itertools.chain(
-                net.source_layer_add_ons.parameters(),
-                net.extras.parameters()
-            ), 'lr': extra_layers_lr},
-            {'params': itertools.chain(
-                net.regression_headers.parameters(),
-                net.classification_headers.parameters()
-            )}
-        ]
-    elif args.freeze_net:
-        freeze_net_layers(net.base_net)
-        freeze_net_layers(net.source_layer_add_ons)
-        freeze_net_layers(net.extras)
-        params = itertools.chain(net.regression_headers.parameters(), net.classification_headers.parameters())
-        logging.info("Freeze all the layers except prediction heads.")
-    else:
-        params = [
-            {'params': net.base_net.parameters(), 'lr': base_net_lr},
-            {'params': itertools.chain(
-                net.source_layer_add_ons.parameters(),
-                net.extras.parameters()
-            ), 'lr': extra_layers_lr},
-            {'params': itertools.chain(
-                net.regression_headers.parameters(),
-                net.classification_headers.parameters()
-            )}
-        ]
 
-    # load a previous model checkpoint (if requested)
+    # 15. 미리 훈련된 모델이 있는 경우 처리
     timer.start("Load Model")
     if args.resume:
         logging.info(f"Resume from the model {args.resume}")
@@ -309,10 +256,10 @@ if __name__ == '__main__':
         net.init_from_pretrained_ssd(args.pretrained_ssd)
     logging.info(f'Took {timer.end("Load Model"):.2f} seconds to load the model.')
 
-    # move the model to GPU
+    # 16. GPU에서 훈련하도록 지정
     net.to(DEVICE)
 
-    # define loss function and optimizer
+    # 17. 손실함수와 최적화 처리
     criterion = MultiboxLoss(config.priors, iou_threshold=0.5, neg_pos_ratio=3,
                              center_variance=0.1, size_variance=0.2, device=DEVICE)
     optimizer = torch.optim.SGD(params, lr=args.lr, momentum=args.momentum,
@@ -320,7 +267,7 @@ if __name__ == '__main__':
     logging.info(f"Learning rate: {args.lr}, Base net learning rate: {base_net_lr}, "
                  + f"Extra Layers learning rate: {extra_layers_lr}.")
 
-    # set learning rate policy
+    # 18. 학습률과 학습률 감소 정책 지정
     if args.scheduler == 'multi-step':
         logging.info("Uses MultiStepLR scheduler.")
         milestones = [int(v.strip()) for v in args.milestones.split(",")]
@@ -334,7 +281,7 @@ if __name__ == '__main__':
         parser.print_help(sys.stderr)
         sys.exit(1)
 
-    # train for the desired number of epochs
+    # 19. 지정한 에포크 수 만큼 훈련
     logging.info(f"Start training from epoch {last_epoch + 1}.")
     
     for epoch in range(last_epoch + 1, args.num_epochs):
