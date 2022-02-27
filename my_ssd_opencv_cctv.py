@@ -60,7 +60,7 @@ def imageProcessing(frame, predictor, class_names, f):
     return frame
 
 #6. 영상 딥러닝 프로세싱 함수
-def Video(openpath, net_type, model_path, label_path):
+def videoProcess(openpath, net_type, model_path, label_path):
     # 라벨 파일을 읽어 클래스 이름들 세팅
     class_names = [name.strip() for name in open(label_path).readlines()]
 
@@ -138,5 +138,5 @@ label_path = sys.argv[3]
 
 #gst_str = "./data/run3.mp4"
 
-Video(gst_str, net_type, model_path, label_path)
+videoProcess(gst_str, net_type, model_path, label_path)
 
