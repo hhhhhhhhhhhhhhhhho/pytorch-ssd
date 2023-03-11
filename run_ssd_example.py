@@ -64,11 +64,14 @@ boxes, labels, probs = predictor.predict(image, 10, 0.4)
 #7. 추론 결과인 박스와 클래스 명을 이미지에 표시
 for i in range(boxes.size(0)):
     box = boxes[i, :]
-    cv2.rectangle(orig_image, (box[0], box[1]), (box[2], box[3]), (255, 255, 0), 4)
+
+    cv2.rectangle(orig_image, (int(box[0]), int(box[1]), int(box[2]), int(box[3])), (255, 255, 0), 4)
     #label = f"""{voc_dataset.class_names[labels[i]]}: {probs[i]:.2f}"""
     label = f"{class_names[labels[i]]}: {probs[i]:.2f}"
+    Data = "classID:{} box({}, {}, {}, {}) conf:{}".format(labels[i], int(box[0]),int(box[1]),int(box[2]),int(box[3]), probs[i])
+    print(Data)
     cv2.putText(orig_image, label,
-                (box[0] + 20, box[1] + 40),
+                (int(box[0]) + 20, int(box[1]) + 40),    
                 cv2.FONT_HERSHEY_SIMPLEX,
                 1,  # font scale
                 (255, 0, 255),
