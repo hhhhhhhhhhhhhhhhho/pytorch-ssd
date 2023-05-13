@@ -80,7 +80,7 @@ def videoProcess(openpath, net_type, model_path, label_path):
             ret, frame = cap.read()
             if ret: 
                 # 이미지 프로세싱 진행한 후 그 결과 이미지 보여주기			
-                result = imageProcessing(frame, predictor, class_names, f)
+                result = imageProcessing(frame, predictor, class_names)
                 cv2.imshow("Output", result)
             else:
                 break
