@@ -7,7 +7,7 @@ cam_str = ("v4l2src device=/dev/video0 ! video/x-raw, width=640, height=480, for
 
 import cv2
 import numpy as np
-#1. 시스템, opencv, 그리고 하위 디렉토리 vision에 있는 ssd 패키지 임포트
+# 시스템, opencv, 그리고 하위 디렉토리 vision에 있는 ssd 패키지 임포트
 from vision.ssd.vgg_ssd import create_vgg_ssd, create_vgg_ssd_predictor
 from vision.ssd.mobilenetv1_ssd import create_mobilenetv1_ssd, create_mobilenetv1_ssd_predictor
 from vision.ssd.mobilenetv1_ssd_lite import create_mobilenetv1_ssd_lite, create_mobilenetv1_ssd_lite_predictor
@@ -15,11 +15,11 @@ from vision.ssd.squeezenet_ssd_lite import create_squeezenet_ssd_lite, create_sq
 from vision.ssd.mobilenet_v2_ssd_lite import create_mobilenetv2_ssd_lite, create_mobilenetv2_ssd_lite_predictor
 from vision.utils.misc import Timer
 
-#2.  opencv, system 패키지 임포트
+#  opencv, system 패키지 임포트
 import cv2
 import sys
 
-#3. 객체인식 결과를 이미지에 표시하는 함수
+# 객체인식 결과를 이미지에 표시하는 함수
 def imageProcessing(frame, predictor, class_names):
     # 추론을 위해 변환
     image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -45,7 +45,7 @@ def imageProcessing(frame, predictor, class_names):
 
     return frame
 
-#4. 영상 딥러닝 프로세싱 함수
+# 영상 딥러닝 프로세싱 함수
 def videoProcess(openpath, net_type, model_path, label_path):
     # 라벨 파일을 읽어 클래스 이름들 세팅
     class_names = [name.strip() for name in open(label_path).readlines()]
@@ -101,7 +101,7 @@ def videoProcess(openpath, net_type, model_path, label_path):
 
     return
    
-#5. 인자가 4보다 작으면 종료, 인자가 4면 카메라 추론 시작, 인자가 4보다 크면 영상파일 추론
+# 인자가 4보다 작으면 종료, 인자가 4면 카메라 추론 시작, 인자가 4보다 크면 영상파일 추론
 if len(sys.argv) < 4:
     print('Usage: python run_ssd_example.py <net type>  <model path> <label path> <image path>')
     sys.exit(0)
@@ -118,6 +118,6 @@ net_type = sys.argv[1]
 model_path = sys.argv[2]
 label_path = sys.argv[3]
 
-#6. 영상 딥러닝 프로세싱 함수 호출
+# 영상 딥러닝 프로세싱 함수 호출
 videoProcess(gst_str, net_type, model_path, label_path)
 
