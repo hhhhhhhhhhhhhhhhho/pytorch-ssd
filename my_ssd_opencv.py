@@ -90,7 +90,6 @@ def videoProcess(openpath, net_type, model_path, label_path):
 
     except KeyboardInterrupt:  
         print("key int")
-        all_stop()
         cap.release()
         cv2.destroyAllWindows()
         return
