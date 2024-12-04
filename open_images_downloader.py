@@ -209,7 +209,7 @@ if __name__ == '__main__':
         print("  Image count:  {:d}".format(len(images[dataset_type])))
         print("  Bounding box count:  {:d}".format(len(annotations[dataset_type])))
         print("  Bounding box distribution: ")
-        log_counts(annotations[dataset_type]['ClassName'])
+        #log_counts(annotations[dataset_type]['ClassName'])
         #print("  Approximate image stats: ")
         #log_counts(annotations[dataset_type].drop_duplicates(["ImageID", "ClassName"])["ClassName"])
         print(" ")
